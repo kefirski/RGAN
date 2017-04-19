@@ -110,7 +110,7 @@ class BatchLoader:
     def true_data(self, batch_size, target: str):
         """
         :param batch_size: number of selected data elements 
-        :param target: weather to use train or valid data source
+        :param target: whether to use train or valid data source
         :return: target tensor
         """
 
@@ -142,7 +142,7 @@ class BatchLoader:
 
         self.word_embedding_index = (self.word_embedding_index + seq_len) % embed_len
 
-        return seq
+        return seq[:, 0], seq[:, 1]
 
     @staticmethod
     def bag_window(seq, window=1):
