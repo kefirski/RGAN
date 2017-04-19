@@ -173,31 +173,18 @@ class BatchLoader:
         return np.array(result).transpose()
 
     def encode_word(self, word):
+
         idx = self.word_to_idx[word]
         result = np.zeros(self.vocab_size)
         result[idx] = 1
         return result
 
     @staticmethod
-    def decode_word_np(indexes):
-        """
-        :param indexes: Numpy array with shape of [batch_size, seq_len, word_embed_size] 
-        :return: argmax of indexes with shape of [batch_size, seq_len]
-        """
+    def decode_word(indexes):
 
-        return np.argmax(indexes, 2)
+        ix = np.random.choice(range(self.words_vocab_size), p=indexes.ravel())
+        x = np.zeros((self.words_vocab_size, 1))
+        x[ix] = 1
+        return self.idx_to_word[np.argmax(x)]
 
-    @staticmethod
-    def decode_word_torch(indexes):
-        """
-        :param indexes: An tensor with shape of [batch_size, seq_len, word_embed_size] 
-        :return: argmax of indexes with shape of [batch_size, seq_len]
-        """
 
-        [_, _, word_embed_size] = indexes.size()
-
-        _, indexes = F.max_pool1d(input=indexes,
-                                  kernel_size=word_embed_size,
-                                  return_indices=True)
-
-        return indexes.squeeze(2)
