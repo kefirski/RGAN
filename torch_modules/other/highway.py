@@ -17,12 +17,13 @@ class Highway(nn.Module):
 
     def forward(self, x):
         """
-        :param x: tensor with shape of [batch_size, size]
-        :return: tensor with shape of [batch_size, size]
         applies σ(x) ⨀ (f(G(x))) + (1 - σ(x)) ⨀ (Q(x)) transformation | G and Q is affine transformation,
             f is non-linear transformation, σ(x) is affine transformation with sigmoid non-linearition
             and ⨀ is element-wise multiplication
         """
+        size = x.size()
+        if len(size) == 3:
+            x = x.view(-1, size[2])
 
         for layer in range(self.num_layers):
             gate = F.sigmoid(self.gate[layer](x))
@@ -31,5 +32,8 @@ class Highway(nn.Module):
             linear = self.linear[layer](x)
 
             x = gate * nonlinear + (1 - gate) * linear
+
+        if len(size) == 3:
+            x = x.view(size[0], size[1], size[2])
 
         return x
