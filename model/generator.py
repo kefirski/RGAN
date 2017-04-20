@@ -10,40 +10,38 @@ class Generator(nn.Module):
         super(Generator, self).__init__()
 
         self.params = params
-        self.rnn = nn.ModuleList([nn.GRU(input_size=self.params.latent_variable_size,
-                                         hidden_size=self.params.decoder_size[0],
-                                         batch_first=True),
-                                  nn.GRU(input_size=self.params.decoder_size[0],
-                                         hidden_size=self.params.decoder_size[1],
-                                         batch_first=True),
-                                  nn.GRU(input_size=self.params.decoder_size[1],
-                                         hidden_size=self.params.decoder_size[2],
-                                         batch_first=True)])
 
-        self.batch_norm = nn.ModuleList([torch.nn.BatchNorm2d(self.params.decoder_size[0]),
-                                         torch.nn.BatchNorm2d(self.params.decoder_size[1]),
-                                         torch.nn.BatchNorm2d(self.params.decoder_size[2])])
+        self.rnn = nn.ModuleList([nn.GRU(input_size=size,
+                                         hidden_size=self.params.gen_size[i + 1],
+                                         batch_first=True)
+                                  for i, size in enumerate(self.params.gen_size[:-1])])
 
-        self.highway = nn.ModuleList([Highway(self.params.decoder_size[0], 2, F.prelu),
-                                      Highway(self.params.decoder_size[1], 2, F.prelu),
-                                      Highway(self.params.decoder_size[2], 3, F.prelu)
-                                      ])
+        self.batch_norm = nn.ModuleList([torch.nn.BatchNorm2d(size) for size in self.params.gen_size[1:]])
 
-        self.fc = nn.Linear(self.params.decoder_size[2], self.params.vocab_size)
+        self.highway = nn.ModuleList([Highway(size, 2, F.ReLU) for size in self.params.gen_size[1:]])
+
+        self.fc = nn.Linear(self.params.gen_size[-1], self.params.vocab_size)
 
     def forward(self, z, seq_len):
-        assert z.size()[1] == self.params.latent_variable_size, 'Invalid input size'
-        [batch_size, _] = z.size()
+        """
+        :param z: An tensor with shape of [batch_size, latent_variable_size] to condition generator from 
+        :param seq_len: length of generated sequence
+        :return: An tensor with shape of [batch_size, seq_len, vocab_size] 
+                    containing probability disctribution over various words in vocabulary
+        """
+
+        [batch_size, latent_variable_size] = z.size()
+        assert latent_variable_size == self.params.latent_variable_size, 'Invalid input size'
 
         # for now z is [batch_size, seq_len, variable_size] shaped tensor
-        z = z.repeat.repeat(1, 1, seq_len).view(batch_size, seq_len, self.params.latent_variable_size)
+        z = z.repeat.repeat(1, 1, seq_len).view(batch_size, seq_len, latent_variable_size)
 
         for i, layer in enumerate(self.rnn):
             z, _ = layer(z)
             z = self.batch_norm[i](z)
             z = self.highway[i](z)
 
-        z = z.view(-1, self.params.decoder_size[2])
+        z = z.view(-1, self.params.gen_size[-1])
         z = F.softmax(self.fc(z))
         z = z.view(batch_size, seq_len, self.params.vocab_size)
 
