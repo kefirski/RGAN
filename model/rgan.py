@@ -8,7 +8,7 @@ from .discriminator import Discriminator
 
 
 class RGAN(nn.Module):
-    def __init__(self, params, path_prefix):
+    def __init__(self, params, path_prefix=''):
         """
         :param params: utils.Parameters instance 
         :param path_prefix: path to data folder
