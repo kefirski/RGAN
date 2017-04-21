@@ -33,4 +33,5 @@ class EmbeddingLockup(nn.Module):
         :return: An tensor with shape of [batch_size, seq_len, word_embedding_size]
         """
 
-        return t.bmm(input, self.embeddings.weight)
+        [batch_size, seq_len, _] = input.size()
+        return t.mm(input.view(-1, self.params.vocab_size), self.embeddings.weight).view(batch_size, seq_len, -1)
