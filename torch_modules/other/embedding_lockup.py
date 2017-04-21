@@ -16,7 +16,7 @@ class EmbeddingLockup(nn.Module):
 
         embeddings = np.load(word_embeddings_path)
 
-        self.embeddings = nn.Embedding(self.params.word_vocab_size, self.params.word_embed_size)
+        self.embeddings = nn.Embedding(self.params.vocab_size, self.params.word_embed_size)
         self.embeddings.weight = Parameter(t.from_numpy(embeddings).float(), requires_grad=False)
 
     def forward(self, input):
@@ -25,6 +25,12 @@ class EmbeddingLockup(nn.Module):
         :return: input embedding with shape of [batch_size, seq_len, word_embed_size]
         """
 
-        result = self.embeddings(input)
+        return self.embeddings(input)
 
-        return result
+    def weighted_lockup(self, input):
+        """
+        :param input: An tensor with shape of [batch_size, seq_len, vocab_size] 
+        :return: An tensor with shape of [batch_size, seq_len, word_embedding_size]
+        """
+
+        return t.bmm(input, self.embeddings.weight)

@@ -17,7 +17,7 @@ if __name__ == '__main__':
                         help='batch size (default: 15)')
     parser.add_argument('--num-sample', type=int, default=8, metavar='NS',
                         help='num sample (default: 8)')
-    parser.add_argument('--use-cuda', type=bool, default=False, metavar='CUDA',
+    parser.add_argument('--use-cuda', type=bool, default=True, metavar='CUDA',
                         help='whether to use cuda (default: True)')
     args = parser.parse_args()
 
