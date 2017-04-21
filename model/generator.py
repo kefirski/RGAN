@@ -11,9 +11,7 @@ class Generator(nn.Module):
 
         self.params = params
 
-        self.rnn = nn.ModuleList([nn.GRU(input_size=size,
-                                         hidden_size=self.params.gen_size[i + 1],
-                                         batch_first=True)
+        self.rnn = nn.ModuleList([nn.GRU(input_size=size, hidden_size=self.params.gen_size[i + 1], batch_first=True)
                                   for i, size in enumerate(self.params.gen_size[:-1])])
 
         self.batch_norm = nn.ModuleList([torch.nn.BatchNorm2d(size) for size in self.params.gen_size[1:]])

@@ -2,7 +2,7 @@ import torch as t
 import torch.nn as nn
 from torch.autograd import Variable
 from torch.nn import Parameter
-from utils.functions import parameters_allocation_check
+from utils.functional import parameters_allocation_check
 
 
 class NEG_loss(nn.Module):
