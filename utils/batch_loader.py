@@ -186,5 +186,3 @@ class BatchLoader:
         x = np.zeros((self.words_vocab_size, 1))
         x[ix] = 1
         return self.idx_to_word[np.argmax(x)]
-
-

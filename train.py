@@ -20,7 +20,7 @@ if __name__ == "__main__":
                         help='num iterations (default: 65000)')
     parser.add_argument('--batch-size', type=int, default=60, metavar='BS',
                         help='batch size (default: 60)')
-    parser.add_argument('--use-cuda', type=bool, default=True, metavar='CUDA',
+    parser.add_argument('--use-cuda', type=bool, default=False, metavar='CUDA',
                         help='use cuda (default: True)')
     parser.add_argument('--learning-rate', type=float, default=5e-5, metavar='LR',
                         help='learning rate (default: 5e-5)')
@@ -29,9 +29,9 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     batch_loader = BatchLoader('')
-    params = Parameters(batch_loader.max_word_len,
-                        batch_loader.max_seq_len,
-                        batch_loader.vocab_size)
+    parameters = Parameters(batch_loader.max_word_len,
+                            batch_loader.max_seq_len,
+                            batch_loader.vocab_size)
 
     rgan = RGAN(parameters)
     if args.use_trained:
@@ -42,11 +42,11 @@ if __name__ == "__main__":
     g_optimizer = RMSprop(rgan.generator.parameters(), args.learning_rate)
     d_optimizer = RMSprop(rgan.discriminator.parameters(), args.learning_rate)
 
-    for iterate in range(args.num_iterations):
+    for iteration in range(args.num_iterations):
 
         for _ in range(5):
             ''' Dicriminator forward-loss-backward-update '''
-            z, true_data = input_data(batch_loader, args.batch_size, args.use_cuda)
+            z, true_data = input_data(batch_loader, args.batch_size, args.use_cuda, parameters)
 
             discriminator_loss, _ = rgan(z, true_data)
 
@@ -54,11 +54,11 @@ if __name__ == "__main__":
             discriminator_loss.backward()
             d_optimizer.step()
 
-            for p in D.parameters():
+            for p in rgan.discriminator.parameters():
                 p.data.clamp_(-0.01, 0.01)
 
         ''' Generator forward-loss-backward-update '''
-        z, true_data = input_data(batch_loader, args.batch_size, args.use_cuda)
+        z, true_data = input_data(batch_loader, args.batch_size, args.use_cuda, parameters)
 
         _, generator_loss = rgan(z, true_data)
 
