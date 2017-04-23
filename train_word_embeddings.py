@@ -30,7 +30,7 @@ if __name__ == '__main__':
     if args.use_cuda:
         neg_loss = neg_loss.cuda()
 
-    # NEG_loss is defined over two embedding matrixes with shape of [params.word_vocab_size, params.word_embed_size]
+    '''NEG_loss is defined over two embedding matrixes with shape of [params.word_vocab_size, params.word_embed_size]'''
     optimizer = SGD(neg_loss.parameters(), 0.1)
 
     for iteration in range(args.num_iterations):

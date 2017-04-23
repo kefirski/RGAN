@@ -31,7 +31,7 @@ class Generator(nn.Module):
         [batch_size, latent_variable_size] = z.size()
         assert latent_variable_size == self.params.latent_variable_size, 'Invalid input size'
 
-        # for now z is [batch_size, seq_len, variable_size] shaped tensor
+        '''for now z is [batch_size, seq_len, variable_size] shaped tensor'''
         z = z.repeat(1, 1, seq_len).view(batch_size, seq_len, latent_variable_size)
 
         for i, layer in enumerate(self.rnn):

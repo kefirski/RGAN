@@ -18,15 +18,12 @@ def parameters_allocation_check(module):
     return fold(f_and, parameters, True) or not fold(f_or, parameters, False)
 
 
-def input_data(batch_loader, batch_size, use_cuda, params):
-    import torch as t
-    from torch.autograd import Variable
+def chain(input, *args):
+    """
+    Applies to input functions from *args
+    """
 
-    true_data = batch_loader.true_data(batch_size, 'train')
-    true_data = Variable(t.from_numpy(true_data)).long()
-    if use_cuda:
-        true_data = true_data.cuda()
+    for arg in args:
+        input = arg(input)
 
-    z = Variable(t.rand([batch_size, params.latent_variable_size]))
-
-    return z, true_data
+    return input

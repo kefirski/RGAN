@@ -2,13 +2,12 @@ import argparse
 import os
 import numpy as np
 import torch as t
+import torch.nn.functional as F
 from torch.autograd import Variable
 from torch.optim import RMSprop
 from utils.batch_loader import BatchLoader
 from utils.parameters import Parameters
 from model.rgan import RGAN
-from utils.functional import input_data
-
 
 if __name__ == "__main__":
 
@@ -44,9 +43,9 @@ if __name__ == "__main__":
 
     for iteration in range(args.num_iterations):
 
-        for _ in range(5):
-            ''' Dicriminator forward-loss-backward-update '''
-            z, true_data = input_data(batch_loader, args.batch_size, args.use_cuda, parameters)
+        for _ in range(2):
+            '''Dicriminator forward-loss-backward-update'''
+            z, true_data = batch_loader.input_data(args.batch_size, args.use_cuda, parameters)
 
             discriminator_loss, _ = rgan(z, true_data)
 
@@ -55,16 +54,29 @@ if __name__ == "__main__":
             d_optimizer.step()
 
             for p in rgan.discriminator.parameters():
-                p.data.clamp_(-0.01, 0.01)
+                p.data.clamp_(-0.05, 0.05)
 
-        ''' Generator forward-loss-backward-update '''
-        z, true_data = input_data(batch_loader, args.batch_size, args.use_cuda, parameters)
+        '''Generator forward-loss-backward-update'''
+        z, true_data = batch_loader.input_data(args.batch_size, args.use_cuda, parameters)
 
-        _, generator_loss = rgan(z, true_data)
+        discriminator_loss, generator_loss = rgan(z, true_data)
 
         g_optimizer.zero_grad()
         generator_loss.backward()
         g_optimizer.step()
 
-    t.save(rvae.state_dict(), 'trained_RGAN')
+        if iteration % 1 == 0:
+            print('------------------------------------')
+            print('iteration {}'.format(iteration))
+            print('-----------GENERATOR LOSS-----------')
+            print(generator_loss.data.cpu().numpy()[0])
+            print('---------DISCRIMINATOR LOSS---------')
+            print(discriminator_loss.data.cpu().numpy()[0])
 
+            '''Sample data from z'''
+            z = batch_loader.sample_z(batch_size=1, use_cuda=args.use_cuda, params=parameters)
+
+            sampling = rgan.sample(z, 35, batch_loader)
+            print(sampling)
+
+    t.save(rvae.state_dict(), 'trained_RGAN')

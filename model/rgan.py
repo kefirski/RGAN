@@ -1,10 +1,11 @@
 import torch as t
 import torch.nn as nn
 import torch.nn.functional as F
-from utils.functional import parameters_allocation_check
 from torch_modules.other.embedding_lockup import EmbeddingLockup
 from .generator import Generator
 from .discriminator import Discriminator
+from utils.functional import chain
+from utils.functional import parameters_allocation_check
 
 
 class RGAN(nn.Module):
@@ -25,9 +26,9 @@ class RGAN(nn.Module):
 
     def forward(self, z, true_data):
         """
-        :param z: An tensor with shape of [batch_size, latent_variable_size] of uniform noise 
-        :param true_data: An tensor with shape of [batch_size, seq_len] of Long type 
-                              containing indexes of words of true data 
+        :param z: An tensor with shape of [batch_size, latent_variable_size] of uniform noise
+        :param true_data: An tensor with shape of [batch_size, seq_len] of Long type
+                              containing indexes of words of true data
         :return: discriminator and generator loss
         """
 
@@ -43,5 +44,20 @@ class RGAN(nn.Module):
 
         return self.discriminator(generated_data, true_data)
 
+    def sample(self, z, seq_len, batch_loader):
+        """
+        :param z: An tensor with shape of [batch_size, latent_variable_size] of uniform noise
+        :param seq_len: length of generated sequence
+        :param batch_loader: BatchLoader instance
+        :return: An tensor with shape of [batch_size, seq_len, vocab_size] 
+                    containing probability disctribution over various words in vocabulary        
+        """
 
+        result = self.generator(z, seq_len)
+        result = result.squeeze(0)
+        result = F.softmax(result)
+        result = result.data.cpu().numpy()
 
+        result = [batch_loader.decode_word(word) for word in result]
+
+        return ' '.join(result)

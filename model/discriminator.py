@@ -14,7 +14,7 @@ class Discriminator(nn.Module):
         self.rnn = nn.ModuleList([nn.GRU(input_size=size, hidden_size=self.params.dis_size[i + 1], batch_first=True)
                                   for i, size in enumerate(self.params.dis_size[:-1])])
 
-        self.batch_norm = nn.ModuleList([t.nn.BatchNorm2d(1) for size in self.params.dis_size[1:]])
+        # self.batch_norm = nn.ModuleList([t.nn.BatchNorm2d(1) for size in self.params.dis_size[1:]])
 
         self.highway = nn.ModuleList([Highway(size, 2, F.leaky_relu) for size in self.params.dis_size[1:]])
 
@@ -41,14 +41,12 @@ class Discriminator(nn.Module):
         :return: Last hidden state of rnn network passed through all layers with shape of [batch_size]
         """
 
-        # for i, layer in enumerate(self.rnn[:-1]):
-        # for i, layer in enumerate(self.rnn):
         for i in range(len(self.rnn) - 1):
             input, _ = self.rnn[i](input)
-            input = input.unsqueeze(1)
-            input = self.batch_norm[i](input)
-            input = input.squeeze(1)
-            input = self.highway[i](input)
+            # input = input.unsqueeze(1)
+            # input = self.batch_norm[i](input)
+            # input = input.squeeze(1)
+            input = self.highway[i](input.contiguous())
 
         _, last_state = self.rnn[-1](input)
         last_state = self.highway[-1](last_state.squeeze(0))

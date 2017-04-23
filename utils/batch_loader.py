@@ -4,6 +4,7 @@ import numpy as np
 from six.moves import cPickle
 from .functional import *
 import torch as t
+from torch.autograd import Variable
 
 
 class BatchLoader:
@@ -73,7 +74,7 @@ class BatchLoader:
         self.max_seq_len = np.amax([len(line) for target in data_words for line in target])
         self.num_lines = [len(target) for target in data_words]
 
-        # split whole data and build vocabulary from it
+        '''split whole data and build vocabulary from it'''
         merged_data_words = (data[0] + '\n' + data[1]).split()
         self.vocab_size, self.idx_to_word, self.word_to_idx = self.build_vocab(merged_data_words)
         self.max_word_len = np.amax([len(word) for word in self.idx_to_word])
@@ -86,7 +87,7 @@ class BatchLoader:
         for target, path in enumerate(tensor_paths):
             np.save(path, self.data_tensor[target])
 
-        # uses to pick up data pairs for embedding learning
+            '''uses to pick up data pairs for embedding learning'''
         self.embed_pairs = np.array([pair for line in self.data_tensor[0] for pair in BatchLoader.bag_window(line, 3)])
 
     def load_preprocessed(self, data_files, idx_file, tensor_paths):
@@ -156,7 +157,7 @@ class BatchLoader:
 
         assert window >= 1 and isinstance(window, int)
 
-        # input, target
+        '''input, target'''
         result = [[], []]
         seq_len = len(seq)
 
@@ -179,10 +180,30 @@ class BatchLoader:
         result[idx] = 1
         return result
 
-    @staticmethod
-    def decode_word(indexes):
+    def decode_word(self, distribution):
 
-        ix = np.random.choice(range(self.words_vocab_size), p=indexes.ravel())
-        x = np.zeros((self.words_vocab_size, 1))
+        ix = np.random.choice(range(self.vocab_size), p=distribution.ravel())
+        x = np.zeros((self.vocab_size, 1))
         x[ix] = 1
         return self.idx_to_word[np.argmax(x)]
+
+    def input_data(self, batch_size, use_cuda, params):
+
+        true_data = self.true_data(batch_size, 'train')
+        true_data = Variable(t.from_numpy(true_data)).long()
+
+        z = Variable(t.rand([batch_size, params.latent_variable_size]))
+
+        if use_cuda:
+            true_data = true_data.cuda()
+            z = z.cuda()
+
+        return z, true_data
+
+    def sample_z(self, batch_size, use_cuda, params):
+
+        z = Variable(t.rand([batch_size, params.latent_variable_size]))
+        if use_cuda:
+            z = z.cuda()
+
+        return z
