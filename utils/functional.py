@@ -17,13 +17,3 @@ def parameters_allocation_check(module):
 
     return fold(f_and, parameters, True) or not fold(f_or, parameters, False)
 
-
-def chain(input, *args):
-    """
-    Applies to input functions from *args
-    """
-
-    for arg in args:
-        input = arg(input)
-
-    return input

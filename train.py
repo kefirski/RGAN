@@ -17,7 +17,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='RGAN')
     parser.add_argument('--num-iterations', type=int, default=65000, metavar='NI',
                         help='num iterations (default: 65000)')
-    parser.add_argument('--batch-size', type=int, default=60, metavar='BS',
+    parser.add_argument('--batch-size', type=int, default=5, metavar='BS',
                         help='batch size (default: 60)')
     parser.add_argument('--use-cuda', type=bool, default=False, metavar='CUDA',
                         help='use cuda (default: True)')
@@ -32,13 +32,13 @@ if __name__ == "__main__":
                             batch_loader.max_seq_len,
                             batch_loader.vocab_size)
 
-    rgan = RGAN(parameters)
+    rgan = RGAN(parameters, batch_loader.go_input(args.batch_size, args.use_cuda))
     if args.use_trained:
         rgan.load_state_dict(t.load('trained_RGAN'))
     if args.use_cuda:
         rgan = rgan.cuda()
 
-    g_optimizer = RMSprop(rgan.generator.parameters(), args.learning_rate)
+    g_optimizer = RMSprop(rgan.generator.learnable_parameters(), args.learning_rate)
     d_optimizer = RMSprop(rgan.discriminator.parameters(), args.learning_rate)
 
     for iteration in range(args.num_iterations):
@@ -72,11 +72,13 @@ if __name__ == "__main__":
             print(generator_loss.data.cpu().numpy()[0])
             print('---------DISCRIMINATOR LOSS---------')
             print(discriminator_loss.data.cpu().numpy()[0])
+            print('\n')
 
             '''Sample data from z'''
-            z = batch_loader.sample_z(batch_size=1, use_cuda=args.use_cuda, params=parameters)
+            z = BatchLoader.sample_z(batch_size=1, use_cuda=args.use_cuda, params=parameters)
 
             sampling = rgan.sample(z, 35, batch_loader)
             print(sampling)
+            print('\n')
 
     t.save(rvae.state_dict(), 'trained_RGAN')

@@ -173,6 +173,13 @@ class BatchLoader:
 
         return np.array(result).transpose()
 
+    def go_input(self, batch_size, use_cuda):
+        go_input = np.array([self.word_to_idx[self.go_token]] * batch_size)
+        go_input = Variable(t.from_numpy(go_input)).long()
+        if use_cuda:
+            go_input = go_input.cuda()
+        return go_input
+
     def encode_word(self, word):
 
         idx = self.word_to_idx[word]
@@ -200,7 +207,8 @@ class BatchLoader:
 
         return z, true_data
 
-    def sample_z(self, batch_size, use_cuda, params):
+    @staticmethod
+    def sample_z(batch_size, use_cuda, params):
 
         z = Variable(t.rand([batch_size, params.latent_variable_size]))
         if use_cuda:

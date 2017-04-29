@@ -29,9 +29,18 @@ class EmbeddingLockup(nn.Module):
 
     def weighted_lockup(self, input):
         """
-        :param input: An tensor with shape of [batch_size, seq_len, vocab_size] 
-        :return: An tensor with shape of [batch_size, seq_len, word_embedding_size]
+        :param input: An 2D or 3D tensor with shape of [batch_size, Option(seq_len), vocab_size] 
+        :return: An tensor with shape of [batch_size, Option(seq_len), word_embedding_size]
         """
 
-        [batch_size, seq_len, _] = input.size()
-        return t.mm(input.view(-1, self.params.vocab_size), self.embeddings.weight).view(batch_size, seq_len, -1)
+        size = input.size()
+        assert len(size) == 2 or len(size) == 3, 'Invalid input rang. 2D or 3D tensor is required'
+
+        batch_size = size[0]
+
+        if len(size) == 3:
+            input = input.view(-1, self.params.vocab_size)
+
+        result = t.mm(input, self.embeddings.weight)
+
+        return result if len(size) == 2 else result.view(batch_size, -1, self.params.vocab_size)

@@ -9,15 +9,15 @@ class Parameters:
             max_seq_len) + 1  # go or eos token
 
         self.vocab_size = int(vocab_size)
-        self.word_embed_size = 250
+        self.word_embed_size = 300
 
-        self.latent_variable_size = 420
+        self.latent_variable_size = 280
 
         ''' 
-        generator takes latent_variable_size shaped input 
+        generator takes word embedding size shaped input 
             and emit probability disctribution over various words in vocabulary
-        discriminator takes word embedding size shape input 
+        discriminator takes word embedding size shaped input 
             and produce single number to discriminate generated data from original one
         '''
-        self.gen_size = [self.latent_variable_size, 400, 380, 350]
-        self.dis_size = [self.word_embed_size, 200, 180, 140, 80]
+        self.gen_size = [self.word_embed_size, self.latent_variable_size, 250]
+        self.dis_size = [self.word_embed_size, 280, 250, 220, 100]

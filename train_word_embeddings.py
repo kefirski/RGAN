@@ -11,13 +11,13 @@ from torch_modules.losses.neg_loss import NEG_loss
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='word2vec')
-    parser.add_argument('--num-iterations', type=int, default=10, metavar='NI',
-                        help='num iterations (default: 15000000)')
+    parser.add_argument('--num-iterations', type=int, default=6000000, metavar='NI',
+                        help='num iterations (default: 6000000)')
     parser.add_argument('--batch-size', type=int, default=15, metavar='BS',
                         help='batch size (default: 15)')
     parser.add_argument('--num-sample', type=int, default=8, metavar='NS',
                         help='num sample (default: 8)')
-    parser.add_argument('--use-cuda', type=bool, default=True, metavar='CUDA',
+    parser.add_argument('--use-cuda', type=bool, default=False, metavar='CUDA',
                         help='whether to use cuda (default: True)')
     args = parser.parse_args()
 
@@ -48,7 +48,7 @@ if __name__ == '__main__':
         out.backward()
         optimizer.step()
 
-        if iteration % 500 == 0:
+        if iteration % 100 == 0:
             out = out.cpu().data.numpy()[0]
             print('iteration = {}, loss = {}'.format(iteration, out))
 
