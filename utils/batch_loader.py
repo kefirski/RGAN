@@ -120,7 +120,7 @@ class BatchLoader:
         indexes = np.array(np.random.randint(self.num_lines[target], size=batch_size))
 
         target = [self.data_tensor[target][index] for index in indexes]
-        target = [[self.word_to_idx[self.go_token]] + line + [self.word_to_idx[self.end_token]] for line in target]
+        target = [line + [self.word_to_idx[self.end_token]] for line in target]
 
         max_input_seq_len = np.amax([len(line) for line in target])
 

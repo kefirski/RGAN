@@ -49,5 +49,5 @@ class RGAN(nn.Module):
                     containing probability disctribution over various words in vocabulary        
         """
 
-        go = self.go_input[0].unsqueeze(0)
-        return self.generator.sample(go, z, seq_len, batch_loader, self.embeddings.forward)
+        go_input = self.go_input[0].unsqueeze(0)
+        return self.generator.sample(go_input, z, seq_len, batch_loader, self.embeddings.forward)

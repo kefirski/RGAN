@@ -2,7 +2,6 @@ import torch as t
 import torch.nn as nn
 import torch.nn.functional as F
 from utils.functional import parameters_allocation_check
-from torch_modules.other.highway import Highway
 
 
 class Discriminator(nn.Module):
@@ -22,9 +21,9 @@ class Discriminator(nn.Module):
         Since rnn is bidirectional shapes will be doubled during the forward propagation
         Thus it is necessary to map them back from these doubled dimensions
         '''
-        self.inner_fc = nn.ModuleList([nn.Linear(size * 2, size, F.elu) for size in self.params.dis_size[1:]])
+        self.retrieve_mapping = nn.ModuleList([nn.Linear(size * 2, size, F.elu) for size in self.params.dis_size[1:]])
 
-        self.fc = nn.Linear(self.params.dis_size[-1], 1)
+        self.hidden_to_scalar = nn.Linear(self.params.dis_size[-1], 1)
 
     def forward(self, generated_data, true_data):
         """
@@ -52,15 +51,19 @@ class Discriminator(nn.Module):
         for i in range(len(self.rnn) - 1):
             x, _ = self.rnn[i](x)
             x = x.contiguous().view(batch_size * seq_len, -1)
-            x = self.inner_fc[i](x)
+            x = F.elu(self.retrieve_mapping[i](x))
             x = self.highway[i](x)
             x = x.view(batch_size, seq_len, -1)
 
-        _, last_state = self.rnn[-1](x)
-        last_state = last_state.transpose(0, 1) \
+        _, final_state = self.rnn[-1](x)
+        final_state = final_state.transpose(0, 1) \
             .contiguous() \
             .view(-1, self.params.dis_size[-1] * 2)
-        last_state = self.inner_fc[-1](last_state)
-        last_state = self.highway[-1](last_state)
+        final_state = F.elu(self.retrieve_mapping[-1](final_state))
+        final_state = self.highway[-1](final_state)
 
-        return self.fc(last_state).squeeze(1)
+        return self.hidden_to_scalar(final_state).squeeze(1)
+
+
+
+from torch_modules.other.highway import Highway

@@ -21,8 +21,8 @@ if __name__ == "__main__":
                         help='batch size (default: 60)')
     parser.add_argument('--use-cuda', type=bool, default=False, metavar='CUDA',
                         help='use cuda (default: True)')
-    parser.add_argument('--learning-rate', type=float, default=5e-5, metavar='LR',
-                        help='learning rate (default: 5e-5)')
+    parser.add_argument('--learning-rate', type=float, default=5e-4, metavar='LR',
+                        help='learning rate (default: 5e-4)')
     parser.add_argument('--use-trained', type=bool, default=False, metavar='UT',
                         help='load pretrained model (default: False)')
     args = parser.parse_args()
@@ -46,7 +46,6 @@ if __name__ == "__main__":
         for _ in range(2):
             '''Dicriminator forward-loss-backward-update'''
             z, true_data = batch_loader.input_data(args.batch_size, args.use_cuda, parameters)
-
             discriminator_loss, _ = rgan(z, true_data)
 
             d_optimizer.zero_grad()
@@ -54,11 +53,10 @@ if __name__ == "__main__":
             d_optimizer.step()
 
             for p in rgan.discriminator.parameters():
-                p.data.clamp_(-0.05, 0.05)
+                p.data.clamp_(-0.035, 0.035)
 
         '''Generator forward-loss-backward-update'''
         z, true_data = batch_loader.input_data(args.batch_size, args.use_cuda, parameters)
-
         discriminator_loss, generator_loss = rgan(z, true_data)
 
         g_optimizer.zero_grad()

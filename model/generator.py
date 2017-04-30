@@ -17,9 +17,11 @@ class Generator(nn.Module):
         self.rnn = nn.ModuleList([nn.GRUCell(input_size=size, hidden_size=self.params.gen_size[i + 1])
                                   for i, size in enumerate(self.params.gen_size[:-1])])
 
+        self.latent_to_hidden = nn.Linear(self.params.latent_variable_size, self.params.gen_size[1])
+
         self.highway = nn.ModuleList([Highway(size, 2, F.elu) for size in self.params.gen_size[1:]])
 
-        self.fc = nn.Linear(self.params.gen_size[-1], self.params.vocab_size)
+        self.hidden_to_vocab_size = nn.Linear(self.params.gen_size[-1], self.params.vocab_size)
 
     def forward(self, x, z, seq_len, embedding_lockup):
         """
@@ -35,7 +37,7 @@ class Generator(nn.Module):
         assert latent_variable_size == self.params.latent_variable_size, 'Invalid input size'
 
         '''Construct initial hidden state from latent variable and zero tensors'''
-        hidden_state = [z] + [Variable(t.zeros(batch_size, size)) for size in self.params.gen_size[2:]]
+        hidden_state = [self.latent_to_hidden(z)] + [Variable(t.zeros(batch_size, size)) for size in self.params.gen_size[2:]]
 
         result = []
 
@@ -54,6 +56,7 @@ class Generator(nn.Module):
         :param z: An tensor with shape of [1, latent_variable_size] to condition generation from
         :param seq_len: length of generated sequence
         :param batch_loader: BatchLoader instance
+        :param embedding_lockup: An function to lockup embeddings for words indexes
         :return: An tensor with shape of [1, seq_len, vocab_size] 
                     containing probability disctribution over various words in vocabulary  
         """
@@ -87,7 +90,7 @@ class Generator(nn.Module):
             hidden_state[i] = rnn_cell(x, hidden_state[i])
             x = self.highway[i](hidden_state[i])
 
-        x = self.fc(x)
+        x = self.hidden_to_vocab_size(x)
 
         return x, hidden_state
 

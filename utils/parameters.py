@@ -11,7 +11,7 @@ class Parameters:
         self.vocab_size = int(vocab_size)
         self.word_embed_size = 300
 
-        self.latent_variable_size = 280
+        self.latent_variable_size = 1000
 
         ''' 
         generator takes word embedding size shaped input 
@@ -19,5 +19,5 @@ class Parameters:
         discriminator takes word embedding size shaped input 
             and produce single number to discriminate generated data from original one
         '''
-        self.gen_size = [self.word_embed_size, self.latent_variable_size, 250]
+        self.gen_size = [self.word_embed_size, 280, 250]
         self.dis_size = [self.word_embed_size, 280, 250, 220, 100]
