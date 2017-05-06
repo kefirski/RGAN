@@ -9,7 +9,7 @@ from utils.functional import parameters_allocation_check
 
 
 class RGAN(nn.Module):
-    def __init__(self, params, go_input, path_prefix=''):
+    def __init__(self, params, path_prefix=''):
         """
         :param params: utils.Parameters instance 
         :param path_prefix: path to data folder
@@ -20,7 +20,6 @@ class RGAN(nn.Module):
         self.params = params
 
         self.embeddings = EmbeddingLockup(self.params, path_prefix)
-        self.go_input = self.embeddings(go_input)
 
         self.generator = Generator(self.params)
         self.discriminator = Discriminator(self.params)
@@ -36,7 +35,7 @@ class RGAN(nn.Module):
         [_, seq_len] = true_data.size()
         true_data = self.embeddings(true_data)
 
-        generated_data = self.generator(self.go_input, z, seq_len, self.embeddings.weighted_lockup)
+        generated_data = self.generator(z, seq_len, self.embeddings.weighted_lockup)
 
         return self.discriminator(generated_data, true_data)
 
@@ -49,5 +48,4 @@ class RGAN(nn.Module):
                     containing probability disctribution over various words in vocabulary        
         """
 
-        go_input = self.go_input[0].unsqueeze(0)
-        return self.generator.sample(go_input, z, seq_len, batch_loader, self.embeddings.forward)
+        return self.generator.sample(z, seq_len, batch_loader, self.embeddings.forward)

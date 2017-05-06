@@ -1,7 +1,10 @@
 import torch as t
 import torch.nn as nn
 import torch.nn.functional as F
+from torch_modules.other.highway import Highway
 from utils.functional import parameters_allocation_check
+from torch_modules.layerNormGRUCell.layerNormGRUCell import LayerNormGRUCell
+from torch.autograd import Variable
 
 
 class Discriminator(nn.Module):
@@ -10,18 +13,8 @@ class Discriminator(nn.Module):
 
         self.params = params
 
-        self.rnn = nn.ModuleList(
-            [nn.GRU(input_size=size, hidden_size=self.params.dis_size[i + 1], batch_first=True, bidirectional=True)
-             for i, size in enumerate(self.params.dis_size[:-1])]
-        )
-
-        self.highway = nn.ModuleList([Highway(size, 2, F.elu) for size in self.params.dis_size[1:]])
-
-        '''
-        Since rnn is bidirectional shapes will be doubled during the forward propagation
-        Thus it is necessary to map them back from these doubled dimensions
-        '''
-        self.retrieve_mapping = nn.ModuleList([nn.Linear(size * 2, size, F.elu) for size in self.params.dis_size[1:]])
+        self.rnn = nn.ModuleList([LayerNormGRUCell(input_size=size, hidden_size=self.params.dis_size[i + 1])
+                                  for i, size in enumerate(self.params.dis_size[:-1])])
 
         self.hidden_to_scalar = nn.Linear(self.params.dis_size[-1], 1)
 
@@ -29,7 +22,7 @@ class Discriminator(nn.Module):
         """
         :param generated_data: An tensor with shape of [batch size, seq len, word embedding size] 
         :param true_data: An tensor with shape of [batch size, seq len, word embedding size]
-        :return: Loss estimation for discriminator and generator in sense of Wasserstein GAN
+        :return: Loss estimation for discriminator and generator
         """
 
         true_labels = self.unroll_network(true_data)
@@ -48,22 +41,16 @@ class Discriminator(nn.Module):
 
         [batch_size, seq_len, _] = x.size()
 
-        for i in range(len(self.rnn) - 1):
-            x, _ = self.rnn[i](x)
-            x = x.contiguous().view(batch_size * seq_len, -1)
-            x = F.elu(self.retrieve_mapping[i](x))
-            x = self.highway[i](x)
-            x = x.view(batch_size, seq_len, -1)
+        result = x.chunk(dim=1, num_chunks=seq_len)
+        result = [chunk.squeeze(1) for chunk in result]
 
-        _, final_state = self.rnn[-1](x)
-        final_state = final_state.transpose(0, 1) \
-            .contiguous() \
-            .view(-1, self.params.dis_size[-1] * 2)
-        final_state = F.elu(self.retrieve_mapping[-1](final_state))
-        final_state = self.highway[-1](final_state)
+        for i, layer in enumerate(self.rnn):
+            hidden_state = Variable(t.zeros(batch_size, layer.hidden_size))
+            if x.is_cuda:
+                hidden_state = hidden_state.cuda()
 
-        return self.hidden_to_scalar(final_state).squeeze(1)
+            for j, input in enumerate(result):
+                hidden_state = layer(input, hidden_state)
+                result[j] = hidden_state
 
-
-
-from torch_modules.other.highway import Highway
+        return self.hidden_to_scalar(result[-1]).squeeze(1)

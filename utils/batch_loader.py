@@ -8,7 +8,7 @@ from torch.autograd import Variable
 
 
 class BatchLoader:
-    def __init__(self, path='../../'):
+    def __init__(self, path=''):
 
         path += 'data/'
 
@@ -193,6 +193,7 @@ class BatchLoader:
         x = np.zeros((self.vocab_size, 1))
         x[ix] = 1
         return self.idx_to_word[np.argmax(x)]
+        # return self.idx_to_word[np.argmax(distribution)]
 
     def input_data(self, batch_size, use_cuda, params):
 

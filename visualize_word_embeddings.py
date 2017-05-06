@@ -1,22 +1,22 @@
 import os
 import matplotlib.pyplot as plt
 import numpy as np
-from sklearn.decomposition import PCA
+from sklearn.manifold import TSNE
 
 from utils.batch_loader import BatchLoader
 
 if __name__ == "__main__":
 
-    embeddings_path = '../../data/preprocessings/word_embeddings.npy'
+    embeddings_path = 'data/preprocessings/word_embeddings.npy'
 
     if not os.path.exists(embeddings_path):
         raise FileNotFoundError("word embeddings file was't found")
 
-    pca = PCA(n_components=2)
+    pca = TSNE(n_components=2)
     word_embeddings = np.load(embeddings_path)
     word_embeddings_pca = pca.fit_transform(word_embeddings)
 
-    batch_loader = BatchLoader()
+    batch_loader = BatchLoader('')
     words = batch_loader.idx_to_word
 
     fig, ax = plt.subplots()

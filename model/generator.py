@@ -3,9 +3,8 @@ import torch as t
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.autograd import Variable
-from utils.functional import parameters_allocation_check
-from torch_modules.other.highway import Highway
-from torch_modules.other.gumbel_softmax import gumbel_softmax
+from torch_modules.softargmax.softargmax import SoftArgmax
+from torch_modules.layerNormGRUCell.layerNormGRUCell import LayerNormGRUCell
 
 
 class Generator(nn.Module):
@@ -14,85 +13,88 @@ class Generator(nn.Module):
 
         self.params = params
 
-        self.rnn = nn.ModuleList([nn.GRUCell(input_size=size, hidden_size=self.params.gen_size[i + 1])
+        self.rnn = nn.ModuleList([LayerNormGRUCell(input_size=size, hidden_size=self.params.gen_size[i + 1])
                                   for i, size in enumerate(self.params.gen_size[:-1])])
 
-        self.latent_to_hidden = nn.Linear(self.params.latent_variable_size, self.params.gen_size[1])
-
-        self.highway = nn.ModuleList([Highway(size, 2, F.elu) for size in self.params.gen_size[1:]])
+        self.latent_to_hidden = nn.ModuleList([nn.Linear(self.params.latent_variable_size, size)
+                                               for size in self.params.gen_size[1:]])
 
         self.hidden_to_vocab_size = nn.Linear(self.params.gen_size[-1], self.params.vocab_size)
 
-    def forward(self, x, z, seq_len, embedding_lockup):
+        self.soft_argmax = SoftArgmax(temperature=1e-3)
+
+    def forward(self, z, seq_len, embedding_lockup):
         """
-        :param x: An tensor with shape of [batch_size, word_embedding_size] filled with initial word in sequence
         :param z: An tensor with shape of [batch_size, latent_variable_size] to condition generation from 
         :param seq_len: length of generated sequence
         :param embedding_lockup: An function to lockup weighted embeddings
-        :return: An tensor with shape of [batch_size, seq_len, vocab_size] 
-                    containing probability disctribution over various words in vocabulary
+        :return: An tensor with shape of [batch_size, seq_len, word_embed_size] 
+                    containing continious generated data
         """
 
-        [batch_size, latent_variable_size] = z.size()
-        assert latent_variable_size == self.params.latent_variable_size, 'Invalid input size'
+        [batch_size, _] = z.size()
 
-        '''Construct initial hidden state from latent variable and zero tensors'''
-        hidden_state = [self.latent_to_hidden(z)] + [Variable(t.zeros(batch_size, size)) for size in self.params.gen_size[2:]]
+        '''y is input to rnn at avery time step'''
+        y = Variable(t.zeros(batch_size, self.params.word_embed_size))
+        if z.is_cuda:
+            y = y.cuda()
+        y = t.cat([y, z], 1)
 
+        '''
+        hidden_state is an array of initial states 
+        each with shape of [batch_size, hidden_size_i]
+        '''
+        hidden_state = self.initial_hidden_state(z)
         result = []
 
-        for j in range(seq_len):
-            x, hidden_state = self.unroll_cells(x, hidden_state)
-            x = gumbel_softmax(x)
-            x = embedding_lockup(x)
+        for i in range(seq_len):
+            y, hidden_state = self.unroll_cell(y, hidden_state)
+            y = self.soft_argmax(y)
+            y = embedding_lockup(y)
+            result += [y.unsqueeze(1)]
+            y = t.cat([y, z], 1)
 
-            result += [x]
+        return t.cat(result, 1)
 
-        return t.cat([x.unsqueeze(1) for x in result], 1)
-
-    def sample(self, x, z, seq_len, batch_loader, embedding_lockup):
+    def sample(self, z, seq_len, batch_loader, embedding_lockup):
         """
-        :param x: An tensor with shape of [1, word_embedding_size] filled with initial word in sequence 
-        :param z: An tensor with shape of [1, latent_variable_size] to condition generation from
         :param seq_len: length of generated sequence
         :param batch_loader: BatchLoader instance
         :param embedding_lockup: An function to lockup embeddings for words indexes
-        :return: An tensor with shape of [1, seq_len, vocab_size] 
-                    containing probability disctribution over various words in vocabulary  
+        :return: Sampling string
         """
 
-        hidden_state = [z] + [Variable(t.zeros(1, size)) for size in self.params.gen_size[2:]]
+        y = Variable(t.zeros(1, self.params.word_embed_size))
+        if z.is_cuda:
+            y = y.cuda()
+        y = t.cat([y, z], 1)
 
+        hidden_state = self.initial_hidden_state(z)
         result = []
 
-        for j in range(seq_len):
-            x, hidden_state = self.unroll_cells(x, hidden_state)
-            x = F.softmax(x)
+        for i in range(seq_len):
+            y, hidden_state = self.unroll_cell(y, hidden_state)
+            y = self.soft_argmax(y)
 
-            word = batch_loader.decode_word(x.squeeze(0).data.cpu().numpy())
+            word = batch_loader.decode_word(y.squeeze(0).data.cpu().numpy())
             result += [word]
 
-            x = batch_loader.word_to_idx[word]
-            x = Variable(t.from_numpy(np.array([x]))).long()
-            x = embedding_lockup(x)
+            y = batch_loader.word_to_idx[word]
+            y = Variable(t.from_numpy(np.array([y]))).long()
+            y = embedding_lockup(y)
+            y = t.cat([y, z], 1)
 
-        return ' '.join(result)
+        return " ".join(result)
 
-    def unroll_cells(self, x, hidden_state):
-        """
-        :param x: An tensor with shape of [batch_size, word_embedding_size] 
-        :param hidden_state: An array of hidden states filled with tensors with shape of [batch_size, hidden_size_i]
-        :return: Out of the last cell with shape of [batch_size, word_vocab_size]
-                    and array of final states filled with tensors with shape of [batch_size, hidden_size_i]
-        """
+    def unroll_cell(self, input, hidden_state):
+        for i, layer in enumerate(self.rnn):
+            hidden_state[i] = layer(input, hidden_state[i])
+            input = hidden_state[i]
 
-        for i, rnn_cell in enumerate(self.rnn):
-            hidden_state[i] = rnn_cell(x, hidden_state[i])
-            x = self.highway[i](hidden_state[i])
+        return self.hidden_to_vocab_size(input), hidden_state
 
-        x = self.hidden_to_vocab_size(x)
-
-        return x, hidden_state
+    def initial_hidden_state(self, z):
+        return [F.elu(mapping(z)) for mapping in self.latent_to_hidden]
 
     def learnable_parameters(self):
         return [par for par in self.parameters() if par.requires_grad]

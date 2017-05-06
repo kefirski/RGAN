@@ -34,6 +34,7 @@ var/
 pip-log.txt
 pip-delete-this-directory.txt
 
+word_embedding.png
 experimentation.py
 preprocessings/
 .idea/

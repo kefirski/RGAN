@@ -4,7 +4,7 @@ import numpy as np
 import torch as t
 import torch.nn.functional as F
 from torch.autograd import Variable
-from torch.optim import RMSprop
+from torch.optim import Adam, RMSprop
 from utils.batch_loader import BatchLoader
 from utils.parameters import Parameters
 from model.rgan import RGAN
@@ -17,12 +17,12 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='RGAN')
     parser.add_argument('--num-iterations', type=int, default=65000, metavar='NI',
                         help='num iterations (default: 65000)')
-    parser.add_argument('--batch-size', type=int, default=5, metavar='BS',
+    parser.add_argument('--batch-size', type=int, default=12, metavar='BS',
                         help='batch size (default: 60)')
     parser.add_argument('--use-cuda', type=bool, default=False, metavar='CUDA',
                         help='use cuda (default: True)')
-    parser.add_argument('--learning-rate', type=float, default=5e-4, metavar='LR',
-                        help='learning rate (default: 5e-4)')
+    parser.add_argument('--learning-rate', type=float, default=5e-5, metavar='LR',
+                        help='learning rate (default: 5e-5)')
     parser.add_argument('--use-trained', type=bool, default=False, metavar='UT',
                         help='load pretrained model (default: False)')
     args = parser.parse_args()
@@ -32,18 +32,17 @@ if __name__ == "__main__":
                             batch_loader.max_seq_len,
                             batch_loader.vocab_size)
 
-    rgan = RGAN(parameters, batch_loader.go_input(args.batch_size, args.use_cuda))
+    rgan = RGAN(parameters)
     if args.use_trained:
         rgan.load_state_dict(t.load('trained_RGAN'))
     if args.use_cuda:
         rgan = rgan.cuda()
 
-    g_optimizer = RMSprop(rgan.generator.learnable_parameters(), args.learning_rate)
-    d_optimizer = RMSprop(rgan.discriminator.parameters(), args.learning_rate)
+    g_optimizer = Adam(rgan.generator.parameters(), args.learning_rate)
+    d_optimizer = Adam(rgan.discriminator.parameters(), args.learning_rate)
 
     for iteration in range(args.num_iterations):
-
-        for _ in range(2):
+        for _ in range(5):
             '''Dicriminator forward-loss-backward-update'''
             z, true_data = batch_loader.input_data(args.batch_size, args.use_cuda, parameters)
             discriminator_loss, _ = rgan(z, true_data)
@@ -53,7 +52,7 @@ if __name__ == "__main__":
             d_optimizer.step()
 
             for p in rgan.discriminator.parameters():
-                p.data.clamp_(-0.035, 0.035)
+                p.data.clamp_(-0.025, 0.025)
 
         '''Generator forward-loss-backward-update'''
         z, true_data = batch_loader.input_data(args.batch_size, args.use_cuda, parameters)

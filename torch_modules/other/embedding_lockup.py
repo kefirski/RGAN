@@ -43,4 +43,4 @@ class EmbeddingLockup(nn.Module):
 
         result = t.mm(input, self.embeddings.weight)
 
-        return result if len(size) == 2 else result.view(batch_size, -1, self.params.vocab_size)
+        return result if len(size) == 2 else result.view(batch_size, -1, self.params.word_embed_size)
